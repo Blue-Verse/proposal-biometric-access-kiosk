@@ -175,7 +175,7 @@
           <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-6 shadow-soft backdrop-blur md:p-8">
             <p class="mb-2 text-xs font-semibold tracking-[0.2em] text-sky-700/80">프로젝트 제안서</p>
             <h1 class="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">센서 데이터 연동 기반 출입 제어 키오스크 SW</h1>
-            <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">생체 데이터(체온·혈압·심박수) 실시간 수신 → 건강 상태 판별 → 게이트 제어 신호 송출까지, 키오스크 단일 디바이스에서 완결되는 출입 제어 SW를 60일 내 구축합니다. 헬스케어 도메인 및 센서 연동 수행 경험을 기반으로 안정적인 하드웨어 통신과 명확한 사용자 안내 UI를 제공합니다.</p>
+            <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">생체 데이터(체온·혈압·심박수) 실시간 수신 → 건강 상태 판별 → 게이트 제어 신호 송출까지, 단일 디바이스에서 완결되는 출입 제어 SW를 60일 내 구축합니다. Flutter 기반 Android 앱 개발 및 헬스케어·BLE 통신 인접 수행 경험을 바탕으로, Android Kiosk Mode와 표준 시리얼·USB 라이브러리(Platform Channel) 통합을 제공합니다.</p>
             <div class="mt-4 flex flex-wrap items-center gap-2">
               <span class="inline-flex rounded-full border border-sky-200 bg-sky-100 px-2.5 py-1 text-sm font-semibold tracking-[0.12em] text-sky-700">4,250,000원 (VAT 별도)</span>
               <span class="inline-flex rounded-full border border-sky-200 bg-sky-100 px-2.5 py-1 text-sm font-semibold tracking-[0.12em] text-sky-700">60일 (착수 후 8주)</span>
@@ -262,7 +262,7 @@
           <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
             <article class="doc-content">
               <h1>프로젝트 소개</h1>
-              <blockquote>생체 데이터(체온·혈압·심박수) 실시간 수신 → 건강 상태 판별 → 게이트 제어 신호 송출까지, 키오스크 단일 디바이스에서 완결되는 출입 제어 SW를 60일 내 구축합니다. 헬스케어 도메인 및 센서 연동 수행 경험을 기반으로 안정적인 하드웨어 통신과 명확한 사용자 안내 UI를 제공합니다.</blockquote>
+              <blockquote>생체 데이터(체온·혈압·심박수) 실시간 수신 → 건강 상태 판별 → 게이트 제어 신호 송출까지, 단일 디바이스에서 완결되는 출입 제어 SW를 60일 내 구축합니다. Flutter 기반 Android 앱 개발 및 헬스케어·BLE 통신 인접 수행 경험을 바탕으로, Android Kiosk Mode와 표준 시리얼·USB 라이브러리(Platform Channel) 통합을 제공합니다.</blockquote>
 
               <h2>프로젝트 개요</h2>
               <table>
@@ -285,12 +285,12 @@
 
               <h2>제안 포인트</h2>
               <ol>
-                <li><strong>헬스케어 도메인 수행 경험</strong>: 시니어 주간보호 관리 플랫폼(Harmony Link, 약 6개월) 등 헬스케어 환경의 실시간 데이터 처리·전자서명·다단계 보안 흐름 구현 경험 보유</li>
-                <li><strong>센서 데이터 검증 로직 구현 경험</strong>: 모바일 헬스케어 앱(DayStarter)에서 센서(ML Kit/조도/배터리) 기반 행동 검증 로직을 직접 구현한 경험을 본 프로젝트의 건강 판별 로직 적용에 그대로 활용</li>
-                <li><strong>하드웨어 통신 모듈 구현 경험</strong>: BLE 근거리 탐색 및 외부 디바이스 통신 모듈을 적용한 크로스플랫폼 앱(Connectin) 수행 경험 → 시리얼/USB/BLE 어떤 인터페이스로도 안정적 연결 가능</li>
-                <li><strong>키오스크 환경 최적화 설계</strong>: Android Kiosk Mode 기반 단일 화면 잠금, 자동 복구, 24/7 무인 운영을 고려한 구조로 설계</li>
-                <li><strong>판별 결과 → 게이트 제어까지 단일 흐름</strong>: 측정 → 판별 → UI 안내 → 게이트 제어 신호까지 키오스크 단일 디바이스에서 완결</li>
-                <li><strong>유사 프로젝트 경험 기반 효율적 진행</strong>: 60일 일정 내 안정적 통합과 충분한 현장 검증 시간 확보</li>
+                <li><strong>헬스케어 도메인 수행 경험</strong>: 시니어 주간보호 관리 플랫폼(Harmony Link, 약 6개월) 등 건강 데이터를 다루는 서비스의 안정성·정확성 흐름 구현 경험 보유</li>
+                <li><strong>디바이스 센서 데이터 검증 로직 구현 경험</strong>: 모바일 헬스케어 앱(DayStarter)에서 디바이스 내장 센서(ML Kit·조도·배터리) 기반 행동 검증 로직을 직접 구현한 경험 → 본 프로젝트의 외부 생체 센서 데이터 수신·판별 흐름 설계에 그대로 적용</li>
+                <li><strong>BLE 무선 하드웨어 통신 구현 경험</strong>: BLE 근거리 디바이스 통신 모듈을 적용한 크로스플랫폼 앱(Connectin) 수행 경험 → 시리얼·USB 통신은 Flutter 표준 라이브러리(usb_serial, flutter_libserialport)를 Platform Channel로 연결하여 동일한 패턴으로 구현</li>
+                <li><strong>Flutter 기반 Android 앱 다수 출시 → Kiosk Mode 적용</strong>: Calendar Share·DayStarter·Fortune App·Harmony Link·Connectin 등 Flutter Android 앱 다수 출시 경험을 바탕으로 Android Lock Task Mode·자동 부팅·백그라운드 진입 차단을 적용</li>
+                <li><strong>측정 → 판별 → UI → 게이트 제어 단일 흐름 설계</strong>: 센서 수신부터 게이트 제어 신호까지 단일 디바이스에서 완결되는 상태 머신 구조로 안전하게 설계 (오류·통신 끊김 시 차단 기본값)</li>
+                <li><strong>충분한 통합 검증 시간 확보</strong>: 60일 일정 중 마지막 10일을 실제 센서·게이트 환경 통합 테스트와 24시간 연속 가동 확인에 할당하여 안정적 인수인계</li>
               </ol>
 
               <h2>사용 기술 및 툴</h2>
@@ -722,9 +722,9 @@
                 </ul>
                 <h4>본 프로젝트와의 유사점</h4>
                 <ul>
-                  <li><strong>센서 데이터 검증 로직</strong>: 다양한 센서에서 수신된 데이터를 기준에 따라 판별하고 결과를 화면에 즉시 반영하는 구조 — 본 프로젝트의 생체 데이터 판별과 동일</li>
+                  <li><strong>디바이스 내장 센서 검증 로직</strong>: ML Kit·조도·배터리 등 모바일 디바이스 센서에서 수신된 데이터를 기준에 따라 판별하고 결과를 화면에 즉시 반영하는 구조를 직접 구현 → 본 프로젝트의 외부 생체 센서 데이터 처리 흐름 설계에 동일 패턴으로 적용 가능</li>
                   <li><strong>실시간 처리</strong>: 데이터 수신 → 판별 → UI 반영의 짧은 지연 시간 보장</li>
-                  <li><strong>안전 기본값</strong>: 검증 실패 시 보수적 결정을 내리는 흐름 — 본 프로젝트의 "오류 시 차단" 기본값 정책과 동일 사상</li>
+                  <li><strong>안전 기본값</strong>: 검증 실패 시 보수적 결정을 내리는 흐름 → 본 프로젝트의 "오류·통신 끊김 시 차단" 기본값 정책과 동일 사상</li>
                 </ul>
                 <h4>기술 스택</h4>
                 <div class="flex flex-wrap gap-1.5 not-prose">
@@ -754,9 +754,9 @@
                 </ul>
                 <h4>본 프로젝트와의 유사점</h4>
                 <ul>
-                  <li><strong>하드웨어 통신 모듈</strong>: BLE 기반 디바이스 통신 구현 경험 → 본 프로젝트의 시리얼/USB/BLE 어떤 인터페이스도 안정적으로 연결 가능</li>
+                  <li><strong>BLE 무선 하드웨어 통신 모듈</strong>: 모바일 디바이스 간 BLE 근거리 통신을 Flutter Platform Channel로 구현한 경험 보유 → 시리얼·USB 인터페이스는 Flutter 표준 라이브러리(usb_serial, flutter_libserialport)를 동일 패턴으로 적용</li>
                   <li><strong>Platform Channel 활용</strong>: Flutter에서 네이티브 하드웨어 API에 접근하는 구조 경험</li>
-                  <li><strong>크로스플랫폼 단일 코드</strong>: 추후 키오스크 OS 변경(Android → iPad 등) 시에도 동일 코드 활용 가능</li>
+                  <li><strong>크로스플랫폼 단일 코드</strong>: 추후 디바이스 OS 변경(Android → 윈도우 등) 시에도 화면·로직 코드 재활용 가능</li>
                 </ul>
                 <h4>기술 스택</h4>
                 <div class="flex flex-wrap gap-1.5 not-prose">
