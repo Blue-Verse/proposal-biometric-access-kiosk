@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="센서 데이터 연동 기반 출입 제어 키오스크 SW — 프로젝트 제안서" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['SUIT Variable', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              600: '#0284c7',
+              700: '#0369a1'
+            }
+          },
+          boxShadow: {
+            soft: '0 10px 30px -18px rgba(15, 23, 42, 0.35)'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root { color-scheme: light; font-size: 16px; /* 12pt minimum base */ }
+    body {
+      font-family: 'SUIT Variable', sans-serif;
+      font-size: 1rem; /* 16px = 12pt */
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(14, 165, 233, 0.08), transparent 42%),
+        radial-gradient(circle at 88% 82%, rgba(2, 132, 199, 0.06), transparent 48%);
+    }
+
+    /* ─── doc-content typography (from harmony-link-be) ─── */
+    .doc-content h1, .doc-content h2, .doc-content h3, .doc-content h4 {
+      color: rgb(15 23 42); font-weight: 700; letter-spacing: -0.01em;
+      line-height: 1.3; margin-top: 1.6em; margin-bottom: 0.7em;
+    }
+    .doc-content h1 { font-size: 2rem; margin-top: 0.2em; }
+    .doc-content h2 { font-size: 1.4rem; }
+    .doc-content h3 { font-size: 1.15rem; }
+    .doc-content p, .doc-content li {
+      color: rgb(51 65 85); line-height: 1.8; font-size: 1rem;
+    }
+    .doc-content p, .doc-content ul, .doc-content ol,
+    .doc-content table, .doc-content pre, .doc-content blockquote {
+      margin-bottom: 1rem;
+    }
+    .doc-content ul, .doc-content ol { padding-left: 1.2rem; }
+    .doc-content ul { list-style: disc; }
+    .doc-content ol { list-style: decimal; }
+    .doc-content table {
+      width: 100%; border-collapse: collapse;
+      border: 1px solid rgb(226 232 240); border-radius: 0.75rem;
+      overflow: hidden; font-size: 1rem;
+    }
+    .doc-content th, .doc-content td {
+      border: 1px solid rgb(226 232 240); padding: 0.7rem 0.8rem;
+      text-align: left; vertical-align: top;
+    }
+    .doc-content th {
+      background: rgb(248 250 252); color: rgb(30 41 59); font-weight: 600;
+    }
+    .doc-content pre, .doc-content code {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    }
+    .doc-content pre {
+      background: rgb(15 23 42); color: rgb(226 232 240);
+      padding: 1rem; border-radius: 0.75rem; overflow-x: auto;
+      font-size: 1rem; line-height: 1.65;
+    }
+    .doc-content p code, .doc-content li code,
+    .doc-content td code, .doc-content th code {
+      background: rgb(241 245 249); color: rgb(15 23 42);
+      border: 1px solid rgb(226 232 240); border-radius: 0.4rem;
+      padding: 0.08rem 0.4rem; font-size: 1em;
+    }
+    .doc-content blockquote {
+      border-left: 3px solid rgb(14 165 233); padding-left: 0.85rem;
+      color: rgb(71 85 105); background: rgb(240 249 255);
+      border-radius: 0.5rem; padding-top: 0.55rem; padding-bottom: 0.55rem;
+    }
+
+    /* ─── 12pt (16px) minimum font size ─── */
+    .text-xs { font-size: 1rem !important; }
+
+    /* ─── Timeline ─── */
+    .timeline { position: relative; padding-left: 2rem; }
+    .timeline::before {
+      content: ''; position: absolute; left: 0.6rem; top: 0.25rem; bottom: 0.25rem;
+      width: 2px; background: rgb(186 230 253);
+    }
+    .timeline-item { position: relative; margin-bottom: 1.75rem; }
+    .timeline-item::before {
+      content: ''; position: absolute; left: -1.65rem; top: 0.35rem;
+      width: 0.75rem; height: 0.75rem; border-radius: 50%;
+      background: rgb(2 132 199); border: 3px solid rgb(224 242 254);
+    }
+
+    /* ─── Page sections ─── */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    /* ─── Mobile sidebar toggle ─── */
+    #sidebar-backdrop { display: none; }
+    #sidebar-backdrop.open { display: block; }
+    @media (max-width: 1023px) {
+      #sidebar { transform: translateX(-100%); transition: transform 0.2s ease; position: fixed; top: 0; left: 0; z-index: 40; height: 100vh; width: 80vw; max-width: 320px; }
+      #sidebar.open { transform: translateX(0); }
+    }
+  </style>
+  <title>센서 데이터 연동 기반 출입 제어 키오스크 SW — 프로젝트 제안서</title>
+</head>
+<body class="text-slate-800 font-sans antialiased">
+  <div class="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10">
+
+    <!-- ─── Header ─── -->
+    <header class="mb-6 rounded-2xl border border-slate-200/70 bg-white/85 px-5 py-3 shadow-soft backdrop-blur">
+      <!-- Row 1: menu + logo (mobile & desktop) / title right-aligned on desktop -->
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="sidebar-toggle" class="lg:hidden inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700 hover:border-sky-300 hover:text-sky-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          메뉴
+        </button>
+        <a href="#home" class="inline-flex items-center shrink-0 text-sm font-bold tracking-tight text-slate-800">
+          프로젝트 제안서
+        </a>
+        <!-- Desktop: push to right. Mobile: hidden here, shown as row 2 below -->
+        <div class="hidden sm:block ml-auto text-right">
+          <p class="text-sm font-semibold tracking-[0.04em] text-sky-700/90">센서 데이터 연동 기반 출입 제어 키오스크 SW</p>
+          <p class="text-xs text-slate-400">프로젝트 제안서</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+
+      <!-- ─── Sidebar ─── -->
+      <div id="sidebar-backdrop" class="fixed inset-0 bg-black/30 z-30 lg:hidden" onclick="closeSidebar()"></div>
+      <aside id="sidebar" class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-soft backdrop-blur lg:sticky lg:top-6 lg:h-[calc(100vh-4rem)] lg:overflow-auto">
+        <!-- sidebar nav starts directly -->
+        <nav id="nav" class="space-y-1">
+          <a href="#home" data-page="home" class="nav-link block rounded-xl border px-3 py-2 text-sm border-sky-200 bg-sky-50 font-medium text-sky-700">홈</a>
+          <div class="my-3 border-t border-slate-200"></div>
+          <p class="mb-2 mt-1 px-1 text-sm font-semibold tracking-[0.14em] text-slate-400">제안서</p>
+          <a href="#overview" data-page="overview" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">프로젝트 소개</a>
+          <a href="#estimate" data-page="estimate" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">견적서</a>
+          <a href="#manday" data-page="manday" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">공수계산서</a>
+          <a href="#prd" data-page="prd" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">PRD</a>
+          <div class="my-3 border-t border-slate-200"></div>
+          <p class="mb-2 mt-1 px-1 text-sm font-semibold tracking-[0.14em] text-slate-400">일정 & 경험</p>
+          <a href="#timeline" data-page="timeline" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">일정 제안</a>
+          <a href="#portfolio" data-page="portfolio" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">유사 프로젝트 경험</a>
+        </nav>
+      </aside>
+
+      <!-- ─── Main Content ─── -->
+      <main class="min-w-0">
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PAGE: Home (Landing — shows everything)        -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="page-home" class="page-section active space-y-6">
+          <!-- Hero -->
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-6 shadow-soft backdrop-blur md:p-8">
+            <p class="mb-2 text-xs font-semibold tracking-[0.2em] text-sky-700/80">프로젝트 제안서</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">센서 데이터 연동 기반 출입 제어 키오스크 SW</h1>
+            <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">생체 데이터(체온·혈압·심박수) 실시간 수신 → 건강 상태 판별 → 게이트 제어 신호 송출까지, 키오스크 단일 디바이스에서 완결되는 출입 제어 SW를 60일 내 구축합니다. 헬스케어 도메인 및 센서 연동 수행 경험을 기반으로 안정적인 하드웨어 통신과 명확한 사용자 안내 UI를 제공합니다.</p>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <span class="inline-flex rounded-full border border-sky-200 bg-sky-100 px-2.5 py-1 text-sm font-semibold tracking-[0.12em] text-sky-700">4,500,000원 (VAT 별도)</span>
+              <span class="inline-flex rounded-full border border-sky-200 bg-sky-100 px-2.5 py-1 text-sm font-semibold tracking-[0.12em] text-sky-700">60일 (착수 후 8주)</span>
+              <span class="inline-flex rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-sm font-semibold tracking-[0.12em] text-amber-700">키오스크 SW · IoT/센서 연동</span>
+              <a href="https://www.wishket.com/project/155051/" target="_blank" rel="noopener noreferrer"
+                 class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-sm font-medium text-slate-500 transition hover:border-sky-300 hover:text-sky-700">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                원본 공고
+              </a>
+            </div>
+          </div>
+
+          <!-- Summary cards grid -->
+          <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <a href="#overview" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">소개</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">프로젝트 소개</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">프로젝트 분석, 핵심 요구사항 정리, 제안 포인트</p>
+            </a>
+            <a href="#estimate" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">비용</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">견적서</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">항목별 비용 산출 근거 및 상세 견적</p>
+            </a>
+            <a href="#manday" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">공수</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">공수계산서</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">기능별 개발 공수(man-day) 산출 내역</p>
+            </a>
+            <a href="#prd" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-amber-100 text-amber-700 border-amber-200">기획</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">PRD</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">기능 요구사항 정의서, 사용자 스토리, 기술 제약</p>
+            </a>
+            <a href="#timeline" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-amber-100 text-amber-700 border-amber-200">일정</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">일정 제안</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">단계별 마일스톤 및 산출물 일정표</p>
+            </a>
+            <a href="#portfolio" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-amber-100 text-amber-700 border-amber-200">경험</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">유사 프로젝트 경험</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">유사 프로젝트 수행 경험 및 기술 스택</p>
+            </a>
+          </div>
+
+          <!-- Quick stats -->
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">10+</p>
+              <p class="mt-1 text-sm text-slate-500">수행 프로젝트</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">3+</p>
+              <p class="mt-1 text-sm text-slate-500">헬스케어/센서 도메인</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">60일</p>
+              <p class="mt-1 text-sm text-slate-500">제안 기간</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">100%</p>
+              <p class="mt-1 text-sm text-slate-500">단일 디바이스 완결</p>
+            </div>
+            <!--
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">10+</p>
+              <p class="mt-1 text-xs text-slate-500">완료 프로젝트</p>
+            </div>
+            -->
+          </div>
+
+          <!-- CTA -->
+          <div class="rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-50 to-brand-50 p-6 text-center shadow-soft md:p-10">
+            <h2 class="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">함께 만들어 가겠습니다</h2>
+            <p class="mx-auto mt-3 max-w-lg text-sm leading-7 text-slate-600">각 메뉴를 클릭하시면 상세 내용을 확인하실 수 있습니다.</p>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PAGE: 프로젝트 소개 (Overview)                  -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="page-overview" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>프로젝트 소개</h1>
+              <blockquote>생체 데이터(체온·혈압·심박수) 실시간 수신 → 건강 상태 판별 → 게이트 제어 신호 송출까지, 키오스크 단일 디바이스에서 완결되는 출입 제어 SW를 60일 내 구축합니다. 헬스케어 도메인 및 센서 연동 수행 경험을 기반으로 안정적인 하드웨어 통신과 명확한 사용자 안내 UI를 제공합니다.</blockquote>
+
+              <h2>프로젝트 개요</h2>
+              <table>
+                <tr><th>항목</th><th>내용</th></tr>
+                <tr><td>프로젝트명</td><td><a href="https://www.wishket.com/project/155051/" target="_blank" rel="noopener noreferrer" class="text-sky-700 underline decoration-sky-300 hover:decoration-sky-500">센서 데이터 연동 기반 출입 제어 키오스크 SW</a></td></tr>
+                <tr><td>카테고리</td><td>키오스크 SW · IoT/센서 연동</td></tr>
+                <tr><td>제안 금액</td><td>4,500,000원 (VAT 별도)</td></tr>
+                <tr><td>제안 기간</td><td>60일 (착수 후 8주)</td></tr>
+                <tr><td>핵심 기술</td><td>Flutter · Android Kiosk Mode · Platform Channel · Serial/USB/BLE 통신 · BLoC</td></tr>
+              </table>
+
+              <h2>핵심 요구사항 분석</h2>
+              <ul>
+                <li><strong>생체 데이터 연동·수집</strong>: 클라이언트 제공 센서 환경(체온·혈압·심박수)으로부터 실시간 송출되는 데이터를 수신·인식</li>
+                <li><strong>건강 상태 판단 로직</strong>: 클라이언트 제공 판별 기준에 따라 정상/이상 상태 계산 및 출입 가능 여부 도출</li>
+                <li><strong>출입 통제·안내 UI</strong>: 측정 진행 → 결과 → 출입 허용/차단을 시각적으로 안내하는 키오스크 인터페이스</li>
+                <li><strong>하드웨어 제어 신호 송출</strong>: 판별 결과에 따라 게이트(출입문) 개폐 신호 연동</li>
+                <li><strong>범위 외</strong>: 관리자 페이지(Admin), 데이터 축적/통계는 본 프로젝트에서 제외</li>
+              </ul>
+
+              <h2>제안 포인트</h2>
+              <ol>
+                <li><strong>헬스케어 도메인 수행 경험</strong>: 시니어 주간보호 관리 플랫폼(Harmony Link, 약 6개월) 등 헬스케어 환경의 실시간 데이터 처리·전자서명·다단계 보안 흐름 구현 경험 보유</li>
+                <li><strong>센서 데이터 검증 로직 구현 경험</strong>: 모바일 헬스케어 앱(DayStarter)에서 센서(ML Kit/조도/배터리) 기반 행동 검증 로직을 직접 구현한 경험을 본 프로젝트의 건강 판별 로직 적용에 그대로 활용</li>
+                <li><strong>하드웨어 통신 모듈 구현 경험</strong>: BLE 근거리 탐색 및 외부 디바이스 통신 모듈을 적용한 크로스플랫폼 앱(Connectin) 수행 경험 → 시리얼/USB/BLE 어떤 인터페이스로도 안정적 연결 가능</li>
+                <li><strong>키오스크 환경 최적화 설계</strong>: Android Kiosk Mode 기반 단일 화면 잠금, 자동 복구, 24/7 무인 운영을 고려한 구조로 설계</li>
+                <li><strong>판별 결과 → 게이트 제어까지 단일 흐름</strong>: 측정 → 판별 → UI 안내 → 게이트 제어 신호까지 키오스크 단일 디바이스에서 완결</li>
+                <li><strong>유사 프로젝트 경험 기반 효율적 진행</strong>: 60일 일정 내 안정적 통합과 충분한 현장 검증 시간 확보</li>
+              </ol>
+
+              <h2>사용 기술 및 툴</h2>
+              <h3>개발 기술</h3>
+              <div class="flex flex-wrap gap-2 not-prose mb-4">
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Flutter</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Dart</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Android Kiosk Mode</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Platform Channel</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">usb_serial</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">flutter_libserialport</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">flutter_blue_plus</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">BLoC</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">GetIt</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Hive (로컬)</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">HTTP/WebSocket</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Figma</span>
+              </div>
+              <h3>협업 및 커뮤니케이션</h3>
+              <div class="flex flex-wrap gap-2 not-prose">
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">Slack / 카카오톡</span>
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">Zoom / Google Meet</span>
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">Notion / Google Docs</span>
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">GitHub / GitHub Issues</span>
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">Figma</span>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PAGE: 견적서 (Estimate)                         -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="page-estimate" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>견적서</h1>
+              <blockquote>본 견적서는 프로젝트 요구사항 분석을 기반으로 산출되었습니다.</blockquote>
+
+              <h2>견적 요약</h2>
+              <table>
+                <tr><th>항목</th><th>내용</th></tr>
+                <tr><td>프로젝트명</td><td>센서 데이터 연동 기반 출입 제어 키오스크 SW</td></tr>
+                <tr><td>제안 금액</td><td><strong>4,500,000원 (VAT 별도)</strong></td></tr>
+                <tr><td>제안 기간</td><td>60일 (착수 후 8주)</td></tr>
+                <tr><td>견적 유효기간</td><td>제안일로부터 30일</td></tr>
+              </table>
+
+              <h2>상세 견적 내역</h2>
+              <table>
+                <thead>
+                  <tr><th>구분</th><th>항목</th><th>수량</th><th>단가</th><th>금액</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>기획</td><td>요구사항 정의·기능 정의·화면 설계서 작성</td><td>1식</td><td>-</td><td>650,000원</td></tr>
+                  <tr><td>디자인</td><td>키오스크 UI/UX 디자인 (Figma 원본 포함)</td><td>1식</td><td>-</td><td>800,000원</td></tr>
+                  <tr><td>Client 개발</td><td>키오스크 앱 화면 구현 (측정/판별/안내)</td><td>1식</td><td>-</td><td>1,500,000원</td></tr>
+                  <tr><td>센서 연동</td><td>생체 데이터 수신 모듈 (시리얼/USB/BLE)</td><td>1식</td><td>-</td><td>700,000원</td></tr>
+                  <tr><td>판별 로직</td><td>건강 상태 판별 로직 적용 및 결과 처리</td><td>1식</td><td>-</td><td>350,000원</td></tr>
+                  <tr><td>게이트 제어</td><td>출입문 개폐 제어 신호 송출 모듈</td><td>1식</td><td>-</td><td>250,000원</td></tr>
+                  <tr><td>QA/배포</td><td>통합 테스트, 키오스크 디바이스 배포</td><td>1식</td><td>-</td><td>250,000원</td></tr>
+                </tbody>
+                <tfoot>
+                  <tr><th colspan="4">합계 (VAT 별도)</th><th>4,500,000원 (VAT 별도)</th></tr>
+                </tfoot>
+              </table>
+
+              <h2>산정 근거</h2>
+              <ul>
+                <li>본 견적은 공고에 명시된 4개 핵심 기능(생체 데이터 연동·판별 로직·UI/UX·게이트 제어)에 한정하여 산정되었습니다.</li>
+                <li>관리자 페이지(Admin), 데이터 축적·통계 기능은 범위 외이므로 산정에 포함되지 않습니다.</li>
+                <li>센서 하드웨어 환경 및 송출 환경, 판별 기준 로직은 클라이언트가 제공하는 것을 전제로 합니다.</li>
+                <li>유사 도메인(헬스케어, 센서 연동) 수행 경험을 기반으로 효율적 개발 수행이 가능하여 클라이언트 예산 범위 내 진행이 가능합니다.</li>
+              </ul>
+
+              <h2>포함 사항</h2>
+              <ul>
+                <li>소스 코드 전체 이관</li>
+                <li>개발 문서 (API 명세서, DB 스키마, 배포 가이드)</li>
+                <li>1개월 무상 하자 보수</li>
+                <li>배포 환경 세팅 (1회)</li>
+              </ul>
+
+              <h2>불포함 사항</h2>
+              <ul>
+                <li>서버 호스팅 비용 (AWS, Vercel 등)</li>
+                <li>도메인 구매 비용</li>
+                <li>외부 유료 API 사용 비용</li>
+                <li>하자 보수 기간 이후 유지보수</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PAGE: 공수계산서 (Man-day Calculation)           -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="page-manday" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>공수계산서</h1>
+              <blockquote>기능별 개발 공수(Man-Day)를 산출하여 일정과 비용의 근거를 제시합니다.</blockquote>
+
+              <h2>공수 요약</h2>
+              <table>
+                <tr><th>구분</th><th>공수 (M/D)</th><th>비율</th></tr>
+                <tr><td>기획/화면 설계</td><td>4 M/D</td><td>13%</td></tr>
+                <tr><td>UI/UX 디자인 (Figma)</td><td>5 M/D</td><td>17%</td></tr>
+                <tr><td>Client 개발 (키오스크 앱)</td><td>10 M/D</td><td>33%</td></tr>
+                <tr><td>센서 연동·판별·게이트 제어</td><td>7 M/D</td><td>23%</td></tr>
+                <tr><td>QA/통합/배포</td><td>4 M/D</td><td>14%</td></tr>
+                <tr><th>합계</th><th>30 M/D</th><th>100%</th></tr>
+              </table>
+
+              <h2>기능별 상세 공수</h2>
+              <table>
+                <thead>
+                  <tr><th>기능</th><th>세부 작업</th><th>담당</th><th>공수 (M/D)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td rowspan="2">기획/설계</td><td>요구사항 정의·기능 정의</td><td>기획</td><td>2</td></tr>
+                  <tr><td>화면 설계서 작성 (와이어프레임)</td><td>기획</td><td>2</td></tr>
+                  <tr><td rowspan="2">UI/UX 디자인</td><td>키오스크 화면 디자인 (홈/측정/결과/오류)</td><td>디자인</td><td>4</td></tr>
+                  <tr><td>아이콘·일러스트·상태 시각화</td><td>디자인</td><td>1</td></tr>
+                  <tr><td rowspan="3">Client 개발</td><td>키오스크 메인 화면 및 상태 머신</td><td>FE</td><td>3</td></tr>
+                  <tr><td>측정 진행 상황 안내 UI</td><td>FE</td><td>3</td></tr>
+                  <tr><td>측정 결과·출입 허용/차단 안내 UI</td><td>FE</td><td>2</td></tr>
+                  <tr><td rowspan="2">Client 부가 기능</td><td>오류 처리·재측정 안내·자동 복귀</td><td>FE</td><td>1</td></tr>
+                  <tr><td>Android Kiosk Mode 잠금·자동 부팅</td><td>FE</td><td>1</td></tr>
+                  <tr><td rowspan="2">센서 데이터 연동</td><td>시리얼/USB/BLE 수신 모듈 (Platform Channel)</td><td>FE</td><td>3</td></tr>
+                  <tr><td>실시간 데이터 파싱·이상치 필터</td><td>FE</td><td>1.5</td></tr>
+                  <tr><td>판별 로직 적용</td><td>클라이언트 제공 기준에 따른 정상/이상 판단</td><td>FE</td><td>1</td></tr>
+                  <tr><td>게이트 제어</td><td>출입문 개폐 신호 송출 (시리얼/HTTP/GPIO 중)</td><td>FE</td><td>1.5</td></tr>
+                  <tr><td rowspan="3">QA/배포</td><td>센서 통합 테스트 (Mock + 실제)</td><td>QA</td><td>2</td></tr>
+                  <tr><td>현장 시나리오 검증</td><td>QA</td><td>1</td></tr>
+                  <tr><td>키오스크 디바이스 배포·인수인계</td><td>QA</td><td>1</td></tr>
+                </tbody>
+              </table>
+
+              <h2>산정 기준</h2>
+              <ul>
+                <li>1 M/D = 8시간 기준 (1인 1일 작업량)</li>
+                <li>주 5일 근무 기준</li>
+                <li>버퍼 10~15% 포함</li>
+                <li>유사 프로젝트 수행 경험 기반 효율적 개발</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PAGE: PRD                                       -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="page-prd" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>PRD (Product Requirements Document)</h1>
+              <blockquote>프로젝트 요구사항을 정의하고 기능 범위를 명확히 합니다.</blockquote>
+
+              <h2>1. 프로젝트 배경 및 목적</h2>
+              <p>본 프로젝트는 헬스케어 환경에서 출입자의 건강 상태(체온·혈압·심박수)를 실시간으로 체크하고, 정상으로 판별된 경우에만 출입을 허용하는 무인 키오스크 SW를 구축하는 것을 목적으로 합니다. 키오스크 단일 디바이스에서 측정·판별·안내·게이트 제어가 모두 완결되어야 하며, 별도의 관리자 페이지나 데이터 축적 기능은 본 프로젝트 범위에서 제외됩니다.</p>
+              <p>당사가 수행하는 범위는 (1) 클라이언트 제공 센서 환경에서 송출되는 생체 데이터의 수신·인식, (2) 클라이언트 제공 판별 로직 적용, (3) 측정 진행 및 결과 안내 UI, (4) 출입 게이트 개폐 신호 송출까지의 키오스크 SW 전체입니다.</p>
+
+              <h2>2. 사용자 정의</h2>
+              <table>
+                <thead>
+                  <tr><th>사용자 유형</th><th>설명</th><th>주요 기능</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>출입자 (End User)</td><td>건강 상태 측정을 통해 시설 출입을 시도하는 사용자</td><td>측정 진행, 결과 확인, 게이트 통과 안내</td></tr>
+                  <tr><td>운영자 (현장)</td><td>키오스크 디바이스를 현장에서 운영·관리하는 인원</td><td>디바이스 상태 확인, 오류 발생 시 안내 화면 인지, 재시작 절차 수행</td></tr>
+                </tbody>
+              </table>
+
+              <h2>3. 기능 요구사항</h2>
+              <h3>3.1 생체 데이터 연동·수집</h3>
+              <ul>
+                <li><strong>[필수]</strong> 클라이언트 제공 센서 환경(체온·혈압·심박수)으로부터 송출되는 데이터 실시간 수신</li>
+                <li><strong>[필수]</strong> 통신 인터페이스(시리얼/USB/BLE/네트워크) 협의 후 모듈 구현 — Platform Channel 기반</li>
+                <li><strong>[필수]</strong> 수신 데이터의 유효성 검증 및 타임아웃·재시도 처리</li>
+                <li><strong>[필수]</strong> 측정 단계별 진행 상태 화면 동기화</li>
+              </ul>
+              <h3>3.2 건강 상태 판단 로직 처리</h3>
+              <ul>
+                <li><strong>[필수]</strong> 클라이언트 제공 판별 기준(임계값·조합 조건 등) 적용</li>
+                <li><strong>[필수]</strong> 정상/이상 여부 계산 및 출입 가능 여부 도출</li>
+                <li><strong>[필수]</strong> 판별 결과 로그(키오스크 로컬, 단기 보관) — 운영자용 디버깅 용도, Admin/통계 제외</li>
+              </ul>
+              <h3>3.3 출입 통제 및 안내 UI/UX</h3>
+              <ul>
+                <li><strong>[필수]</strong> 홈/대기 화면 — 측정 시작 안내</li>
+                <li><strong>[필수]</strong> 측정 진행 화면 — 단계별 가이드, 진행 상황 표시</li>
+                <li><strong>[필수]</strong> 측정 결과 화면 — 정상/이상 시각적 안내</li>
+                <li><strong>[필수]</strong> 출입 허용/차단 안내 화면 — 게이트 동작 동기화</li>
+                <li><strong>[필수]</strong> 오류·재측정 안내 화면 — 센서 미감지·통신 실패 등</li>
+              </ul>
+              <h3>3.4 하드웨어 제어 신호 송출</h3>
+              <ul>
+                <li><strong>[필수]</strong> 판별 결과에 따른 게이트(출입문) 개폐 신호 송출</li>
+                <li><strong>[필수]</strong> 송출 인터페이스(시리얼·HTTP·GPIO 등) 클라이언트 환경에 맞춰 협의 후 구현</li>
+                <li><strong>[필수]</strong> 게이트 제어 결과(성공/실패) 확인 및 UI 동기화</li>
+              </ul>
+              <h3>3.5 키오스크 디바이스 운영</h3>
+              <ul>
+                <li><strong>[필수]</strong> Android Kiosk Mode 단일 화면 잠금</li>
+                <li><strong>[필수]</strong> 부팅 시 자동 실행, 백그라운드 진입 차단</li>
+                <li><strong>[선택]</strong> 일정 시간 미사용 시 자동 홈 복귀</li>
+              </ul>
+
+              <h2>4. 비기능 요구사항</h2>
+              <table>
+                <thead>
+                  <tr><th>항목</th><th>요구사항</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>응답성</td><td>센서 데이터 수신 → 화면 반영 지연 200ms 이내</td></tr>
+                  <tr><td>가용성</td><td>24/7 무인 운영, 통신 끊김 시 자동 복구</td></tr>
+                  <tr><td>안정성</td><td>오류 발생 시 안전 기본값(차단)으로 동작 — 잘못된 허용 방지</td></tr>
+                  <tr><td>UI/UX</td><td>키오스크 환경(스탠딩 사용자) 고려한 큰 글씨·고대비 색상</td></tr>
+                  <tr><td>확장성</td><td>판별 기준·인터페이스 변경 시 코드 수정 없이 설정으로 대응 가능한 구조</td></tr>
+                  <tr><td>운영성</td><td>현장 운영자가 부팅 후 별도 조작 없이 즉시 사용 가능</td></tr>
+                </tbody>
+              </table>
+
+              <h2>5. 기술 제약사항</h2>
+              <ul>
+                <li>키오스크 운영 OS·디바이스 사양은 클라이언트 환경에 따라 협의 (기본 권장: Android 11+ 산업용 태블릿/올인원 키오스크)</li>
+                <li>센서 통신 인터페이스(시리얼·USB·BLE·네트워크)는 클라이언트 측 송출 환경에 맞춰 구현</li>
+                <li>건강 상태 판별 기준 및 임계값은 클라이언트가 제공하는 로직을 그대로 적용 (의학적 판단 책임은 당사 범위 외)</li>
+                <li>출입 게이트 제어 인터페이스(릴레이/제어 보드/네트워크 명령 등)는 클라이언트 환경에 맞춰 연동</li>
+              </ul>
+
+              <h2>6. 범위 외 사항 (Out of Scope)</h2>
+              <ul>
+                <li>관리자용 어드민 페이지(Admin) 개발</li>
+                <li>측정 데이터 영구 축적 및 통계·리포트 화면</li>
+                <li>센서 하드웨어 조달·구성 (클라이언트 제공)</li>
+                <li>판별 로직 자체의 의학적 설계 (클라이언트 제공)</li>
+                <li>출입 게이트 하드웨어(잠금장치·게이트 본체) 조달</li>
+                <li>키오스크 디바이스 구매·설치 작업 (현장 인수인계만 수행)</li>
+                <li>운영 기간 중 서버 호스팅 및 24/7 모니터링 운영 대행</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PAGE: 일정 제안 (Timeline)                      -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="page-timeline" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>일정 제안</h1>
+              <blockquote>총 60일 (착수 후 8주) 기준 단계별 마일스톤 및 산출물을 제안합니다.</blockquote>
+
+              <h2>전체 일정 요약</h2>
+              <table>
+                <thead>
+                  <tr><th>단계</th><th>기간</th><th>주요 산출물</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Phase 1: 기획·화면 설계</td><td>Day 1–10</td><td>요구사항 정의서, 화면 설계서, 통신 인터페이스 명세</td></tr>
+                  <tr><td>Phase 2: UI/UX 디자인</td><td>Day 11–22</td><td>Figma 화면 디자인 (홈/측정/결과/오류), 디자인 가이드</td></tr>
+                  <tr><td>Phase 3: 핵심 개발</td><td>Day 23–45</td><td>키오스크 앱, 센서 연동 모듈, 판별 로직, 게이트 제어, Kiosk Mode</td></tr>
+                  <tr><td>Phase 4: 통합·QA</td><td>Day 46–55</td><td>실제 센서·게이트 통합 테스트, 현장 시나리오 검증, 안정화</td></tr>
+                  <tr><td>Phase 5: 배포·인수인계</td><td>Day 56–60</td><td>키오스크 디바이스 배포, 소스 코드 이관, 운영 가이드</td></tr>
+                </tbody>
+              </table>
+            </article>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <h2 class="mb-4 text-sm font-semibold tracking-[0.14em] text-slate-500">상세 타임라인</h2>
+            <div class="timeline">
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 1</p>
+                <h4 class="text-base font-semibold text-slate-900">기획·화면 설계</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 1–10</p>
+                <p class="text-sm leading-7 text-slate-600">클라이언트 제공 판별 기준·센서 송출 환경·게이트 인터페이스 협의 후 요구사항 정의·기능 정의·화면 설계서 작성</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: 요구사항 정의서, 기능 정의서, 화면 설계서, 통신 인터페이스 명세</li>
+                </ul>
+              </div>
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 2</p>
+                <h4 class="text-base font-semibold text-slate-900">UI/UX 디자인</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 11–22</p>
+                <p class="text-sm leading-7 text-slate-600">키오스크 환경에 최적화된 큰 글씨·고대비·단계별 안내 화면 설계, 정상/이상 시각화 일관성 확보</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: Figma 원본 파일, 화면 디자인 가이드</li>
+                </ul>
+              </div>
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 3</p>
+                <h4 class="text-base font-semibold text-slate-900">핵심 개발</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 23–45</p>
+                <p class="text-sm leading-7 text-slate-600">키오스크 앱 본체, 센서 데이터 수신 모듈(Platform Channel), 판별 로직 적용, 게이트 제어 신호 송출, Android Kiosk Mode 적용</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: 키오스크 앱 빌드(APK), 센서 연동 모듈, 게이트 제어 모듈</li>
+                </ul>
+              </div>
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 4</p>
+                <h4 class="text-base font-semibold text-slate-900">통합 테스트·QA</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 46–55</p>
+                <p class="text-sm leading-7 text-slate-600">실제 센서 환경·게이트 환경에서 통합 테스트, 정상/이상/오류 시나리오 검증, 24시간 연속 가동 확인</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: 테스트 결과 리포트, 안정화 빌드</li>
+                </ul>
+              </div>
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 5</p>
+                <h4 class="text-base font-semibold text-slate-900">배포·인수인계</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 56–60</p>
+                <p class="text-sm leading-7 text-slate-600">키오스크 디바이스에 최종 빌드 배포, 운영 가이드 전달, 소스 코드 및 디자인 원본 이관</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: 최종 빌드, 소스 코드, Figma 원본, 운영 가이드</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h2>마일스톤 체크포인트</h2>
+              <table>
+                <thead>
+                  <tr><th>마일스톤</th><th>시점</th><th>검수 기준</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>M1: 설계 완료</td><td>Day 10</td><td>요구사항 정의서·화면 설계서·통신 인터페이스 명세 승인</td></tr>
+                  <tr><td>M2: 디자인 완료</td><td>Day 22</td><td>Figma 디자인 원본 승인</td></tr>
+                  <tr><td>M3: 알파 빌드</td><td>Day 45</td><td>핵심 기능(센서 연동·판별·UI·게이트) 동작 확인</td></tr>
+                  <tr><td>M4: 통합 검증</td><td>Day 55</td><td>실제 환경 통합 테스트 통과, 24시간 연속 가동 확인</td></tr>
+                  <tr><td>M5: 최종 배포</td><td>Day 60</td><td>최종 빌드 배포, 산출물 이관 완료</td></tr>
+                </tbody>
+              </table>
+
+              <h2>커뮤니케이션 계획</h2>
+              <table>
+                <tr><th>항목</th><th>방식</th><th>주기</th></tr>
+                <tr><td>일일 진행 공유</td><td>Slack / 카카오톡</td><td>매일</td></tr>
+                <tr><td>주간 미팅</td><td>Zoom / Google Meet</td><td>주 1회</td></tr>
+                <tr><td>마일스톤 리뷰</td><td>화면 공유 + 문서</td><td>단계 완료 시</td></tr>
+                <tr><td>이슈 트래킹</td><td>GitHub Issues</td><td>상시</td></tr>
+              </table>
+            </article>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- PAGE: 포트폴리오 (Portfolio)                     -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div id="page-portfolio" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>유사 프로젝트 경험</h1>
+              <blockquote>본 프로젝트와 유사한 기능/기술 스택을 활용한 수행 경험을 소개합니다.</blockquote>
+            </article>
+          </div>
+
+          <!-- Stats row -->
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">10+</p>
+              <p class="mt-1 text-sm text-slate-500">수행 프로젝트</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">3+</p>
+              <p class="mt-1 text-sm text-slate-500">헬스케어/센서 도메인</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">60일</p>
+              <p class="mt-1 text-sm text-slate-500">제안 기간</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">100%</p>
+              <p class="mt-1 text-sm text-slate-500">단일 디바이스 완결</p>
+            </div>
+          </div>
+
+          <!-- Portfolio cards -->
+          <div class="space-y-4">
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft backdrop-blur md:p-8">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">B2B SaaS · 헬스케어</div>
+              <h3 class="text-lg font-semibold tracking-tight text-slate-900">Harmony Link — 시니어 주간보호 관리 플랫폼</h3>
+              <p class="mt-1 text-sm text-slate-400">B2B SaaS / 헬스케어 / 시니어 케어 · 약 6개월 (2025)</p>
+              <div class="mt-3 doc-content">
+                <h4>프로젝트 개요</h4>
+                <p>시니어 주간보호 시설 운영을 위한 관리 플랫폼. 케어 로그·투약 관리·보호자 커뮤니케이션·AI 건강 분석·전자서명을 6개 플랫폼(Web/Android/iOS) 동시 지원으로 구축.</p>
+                <h4>핵심 기능</h4>
+                <ul>
+                  <li>케어 로그 및 투약 관리, 실시간 알림</li>
+                  <li>AI 건강 분석 (OpenAI 연동)</li>
+                  <li>전자서명, 멀티테넌트 아키텍처</li>
+                  <li>크로스플랫폼 (Flutter + Web + Native)</li>
+                </ul>
+                <h4>본 프로젝트와의 유사점</h4>
+                <ul>
+                  <li><strong>헬스케어 도메인</strong>: 건강 데이터를 다루는 서비스의 안정성·정확성 요구사항 이해</li>
+                  <li><strong>실시간 데이터 처리</strong>: 측정·기록·알림이 시간 지연 없이 연결되는 흐름 구현 경험</li>
+                  <li><strong>멀티플랫폼</strong>: Flutter 기반 단일 코드베이스로 디바이스 환경에 대응한 경험</li>
+                </ul>
+                <h4>기술 스택</h4>
+                <div class="flex flex-wrap gap-1.5 not-prose">
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Flutter</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">NestJS</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">TypeScript</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Next.js</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">MySQL</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">AWS CDK</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft backdrop-blur md:p-8">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">B2C 앱 · 센서 / 헬스케어</div>
+              <h3 class="text-lg font-semibold tracking-tight text-slate-900">DayStarter — 센서 검증 기반 헬스케어 앱</h3>
+              <p class="mt-1 text-sm text-slate-400">B2C 앱 / 헬스케어 / 게이미피케이션 · 약 3년 운영 (2022.06~)</p>
+              <div class="mt-3 doc-content">
+                <h4>프로젝트 개요</h4>
+                <p>센서 데이터를 활용해 사용자의 행동을 검증하고 보상 체계와 연결하는 헬스케어/게이미피케이션 앱. 디바이스 센서(ML Kit·조도·배터리 등)에서 수집한 데이터를 실시간으로 판별하여 행동 결과를 결정.</p>
+                <h4>핵심 기능</h4>
+                <ul>
+                  <li>센서 기반 데이터 수집·실시간 검증</li>
+                  <li>판별 로직 적용 → 결과 처리·UI 반영</li>
+                  <li>7단계 보상 시스템 및 행동 변화 게이미피케이션</li>
+                  <li>Spine 2D 캐릭터 시스템</li>
+                </ul>
+                <h4>본 프로젝트와의 유사점</h4>
+                <ul>
+                  <li><strong>센서 데이터 검증 로직</strong>: 다양한 센서에서 수신된 데이터를 기준에 따라 판별하고 결과를 화면에 즉시 반영하는 구조 — 본 프로젝트의 생체 데이터 판별과 동일</li>
+                  <li><strong>실시간 처리</strong>: 데이터 수신 → 판별 → UI 반영의 짧은 지연 시간 보장</li>
+                  <li><strong>안전 기본값</strong>: 검증 실패 시 보수적 결정을 내리는 흐름 — 본 프로젝트의 "오류 시 차단" 기본값 정책과 동일 사상</li>
+                </ul>
+                <h4>기술 스택</h4>
+                <div class="flex flex-wrap gap-1.5 not-prose">
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Flutter</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Kotlin (Native)</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">NestJS</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">PostgreSQL</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">ML Kit</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Spine 2D</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft backdrop-blur md:p-8">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">B2B 플랫폼 · BLE / 하드웨어 통신</div>
+              <h3 class="text-lg font-semibold tracking-tight text-slate-900">Connectin — 디지털 명함·근거리 네트워킹</h3>
+              <p class="mt-1 text-sm text-slate-400">B2B 플랫폼 / 네트워킹 · 3개월 (2025.05~2025.08)</p>
+              <div class="mt-3 doc-content">
+                <h4>프로젝트 개요</h4>
+                <p>BLE 근거리 탐색을 활용한 디지털 명함·네트워킹 앱. 모바일 디바이스 간의 하드웨어 통신과 보안 설계를 단일 코드베이스(Flutter)에서 구축.</p>
+                <h4>핵심 기능</h4>
+                <ul>
+                  <li>BLE 근거리 디바이스 탐색·페어링</li>
+                  <li>OCR 명함 스캔, Signal Protocol E2E 암호화</li>
+                  <li>크로스플랫폼 (Android/iOS) 단일 코드베이스</li>
+                  <li>외부 슈퍼앱(Zalo) 연동</li>
+                </ul>
+                <h4>본 프로젝트와의 유사점</h4>
+                <ul>
+                  <li><strong>하드웨어 통신 모듈</strong>: BLE 기반 디바이스 통신 구현 경험 → 본 프로젝트의 시리얼/USB/BLE 어떤 인터페이스도 안정적으로 연결 가능</li>
+                  <li><strong>Platform Channel 활용</strong>: Flutter에서 네이티브 하드웨어 API에 접근하는 구조 경험</li>
+                  <li><strong>크로스플랫폼 단일 코드</strong>: 추후 키오스크 OS 변경(Android → iPad 등) 시에도 동일 코드 활용 가능</li>
+                </ul>
+                <h4>기술 스택</h4>
+                <div class="flex flex-wrap gap-1.5 not-prose">
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Flutter</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Dart</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">BLE</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Next.js</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Express</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">PostgreSQL</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <div class="rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-50 to-brand-50 p-6 text-center shadow-soft md:p-10">
+            <h2 class="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">함께 만들어 가겠습니다</h2>
+            <p class="mx-auto mt-3 max-w-lg text-sm leading-7 text-slate-600">프로젝트에 대해 더 자세한 논의를 원하시면 미팅을 신청해 주세요.</p>
+          </div>
+        </div>
+
+        <!-- ─── Bottom Page Navigation ─── -->
+        <div id="page-nav" class="mt-6 flex items-center justify-between gap-4" style="display:none;">
+          <a id="nav-prev" href="#home"
+             class="group flex items-center gap-2 rounded-2xl border border-slate-200/70 bg-white/90 px-5 py-3 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+            <svg class="w-5 h-5 text-slate-400 transition group-hover:text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            <span>
+              <span class="block text-xs text-slate-400">이전</span>
+              <span id="nav-prev-label" class="block text-sm font-semibold text-slate-700 group-hover:text-sky-700">홈</span>
+            </span>
+          </a>
+          <a id="nav-next" href="#overview"
+             class="group flex items-center gap-2 rounded-2xl border border-slate-200/70 bg-white/90 px-5 py-3 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white text-right ml-auto">
+            <span>
+              <span class="block text-xs text-slate-400">다음</span>
+              <span id="nav-next-label" class="block text-sm font-semibold text-slate-700 group-hover:text-sky-700">프로젝트 소개</span>
+            </span>
+            <svg class="w-5 h-5 text-slate-400 transition group-hover:text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+      </main>
+    </div>
+
+    <footer class="mt-10 border-t border-slate-200 pt-6 text-xs text-slate-500">
+      &copy; 2026 &middot; 본 제안서는 센서 데이터 연동 기반 출입 제어 키오스크 SW 프로젝트를 위해 작성되었습니다.
+    </footer>
+  </div>
+
+  <!-- ─── SPA Router ─── -->
+  <script>
+    const pages = ['home', 'overview', 'estimate', 'manday', 'prd', 'timeline', 'portfolio'];
+    const pageLabels = {
+      home: '홈', overview: '프로젝트 소개', estimate: '견적서',
+      manday: '공수계산서', prd: 'PRD', timeline: '일정 제안', portfolio: '유사 프로젝트 경험'
+    };
+
+    function navigate(pageId) {
+      if (!pages.includes(pageId)) pageId = 'home';
+      // Hide all pages
+      document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+      // Show target
+      const target = document.getElementById('page-' + pageId);
+      if (target) target.classList.add('active');
+      // Update nav
+      document.querySelectorAll('.nav-link').forEach(link => {
+        if (link.dataset.page === pageId) {
+          link.className = 'nav-link block rounded-xl border px-3 py-2 text-sm border-sky-200 bg-sky-50 font-medium text-sky-700';
+        } else {
+          link.className = 'nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900';
+        }
+      });
+      // Update bottom page navigation
+      updatePageNav(pageId);
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Close mobile sidebar
+      closeSidebar();
+    }
+
+    function updatePageNav(pageId) {
+      const nav = document.getElementById('page-nav');
+      const idx = pages.indexOf(pageId);
+      const prevBtn = document.getElementById('nav-prev');
+      const nextBtn = document.getElementById('nav-next');
+      const prevLabel = document.getElementById('nav-prev-label');
+      const nextLabel = document.getElementById('nav-next-label');
+
+      // Show nav on all pages except home
+      nav.style.display = (pageId === 'home') ? 'none' : 'flex';
+
+      // Previous button
+      if (idx > 0) {
+        prevBtn.href = '#' + pages[idx - 1];
+        prevLabel.textContent = pageLabels[pages[idx - 1]];
+        prevBtn.style.visibility = 'visible';
+      } else {
+        prevBtn.style.visibility = 'hidden';
+      }
+
+      // Next button
+      if (idx < pages.length - 1) {
+        nextBtn.href = '#' + pages[idx + 1];
+        nextLabel.textContent = pageLabels[pages[idx + 1]];
+        nextBtn.style.visibility = 'visible';
+      } else {
+        nextBtn.style.visibility = 'hidden';
+      }
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebar-backdrop').classList.remove('open');
+    }
+
+    // Hash routing
+    function handleHash() {
+      const hash = (location.hash || '#home').replace('#', '');
+      navigate(hash);
+    }
+    window.addEventListener('hashchange', handleHash);
+    window.addEventListener('DOMContentLoaded', handleHash);
+
+    // Mobile sidebar toggle
+    document.getElementById('sidebar-toggle').addEventListener('click', function() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebar-backdrop').classList.toggle('open');
+    });
+  </script>
+</body>
+</html>
